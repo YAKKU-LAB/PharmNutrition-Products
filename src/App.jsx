@@ -3,7 +3,7 @@ import {
   Plus, ChevronRight, Trash2, ExternalLink, Check, AlertCircle,
   ArrowUp, ArrowDown, Settings, LogOut, X, BarChart2, Calendar,
   ChevronLeft, Lock, Package, List, GanttChartSquare, Link2, Edit2,
-  ChevronsLeft, ChevronsRight, StickyNote, CloudOff, Loader2
+  ChevronsLeft, ChevronsRight, StickyNote, CloudOff, Loader2, Download
 } from "lucide-react";
 import { supabase, STATE_TABLE, STATE_ROW_ID } from "./supabaseClient";
 
@@ -13,8 +13,8 @@ const C = {
   sidebar: "#F0EBE3",
   card: "#FFFFFF",
   border: "#E8E0D0",
-  accent: "#CF6744",
-  accentLight: "#FEF0E8",
+  accent: "#B5614A",
+  accentLight: "#F3E5DC",
   text: "#1C1917",
   textSub: "#78716C",
   textMuted: "#A8A29E",
@@ -22,8 +22,8 @@ const C = {
 };
 
 // ─── PASSWORDS ───────────────────────────────────────────────────────────────
-const PW_VIEWER = "view1234";
-const PW_ADMIN  = "admin9999";
+const PW_VIEWER = "1";
+const PW_ADMIN  = "효주이원";
 
 // ─── BRAND LINES ────────────────────────────────────────────────────────────
 const BRANDS = ["건강기능식품", "일반의약품", "화장품"];
@@ -261,14 +261,14 @@ function AssigneeCell({ names, isAdmin, onChange }) {
   const [input, setInput] = useState("");
   const list = names || [];
   if (!isAdmin) {
-    return <span className="text-xs" style={{ color: list.length ? C.textDark : C.textMuted }}>{list.length ? list.join(", ") : "—"}</span>;
+    return <span className={`text-sm ${list.length ? "font-medium" : ""}`} style={{ color: list.length ? C.textDark : C.textMuted }}>{list.length ? list.join(", ") : "—"}</span>;
   }
   const add = () => { const v = input.trim(); if (!v || list.includes(v)) { setInput(""); return; } onChange([...list, v]); setInput(""); };
   const remove = (n) => onChange(list.filter(x => x !== n));
   return (
     <div className="relative inline-block" onClick={e => e.stopPropagation()}>
       <span onClick={() => setOpen(o => !o)}
-        className="text-xs cursor-pointer rounded px-1 -mx-1 hover:bg-stone-100 transition"
+        className={`text-sm cursor-pointer rounded px-1 -mx-1 hover:bg-stone-100 transition ${list.length ? "font-medium" : ""}`}
         style={{ color: list.length ? C.textDark : C.textMuted }}>
         {list.length ? list.join(", ") : "—"}
       </span>
@@ -689,7 +689,7 @@ function Dashboard({ products, salesSheets, onNav }) {
   const delayed = products.filter(p => p.pipeline?.some(s => s.stepStatus === "delayed"));
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-8 max-w-[76.8rem]">
       <h2 className="text-xl font-bold mb-5" style={{ color: C.text }}>전체 현황</h2>
 
       <SalesSheetBanners sheets={salesSheets} />
@@ -766,8 +766,8 @@ function Dashboard({ products, salesSheets, onNav }) {
 }
 
 // ─── 파이프라인 체크리스트 ────────────────────────────────────────────────────
-const ROW_COLS = "26px minmax(130px,1fr) 110px 90px 112px 112px 18px";
-const TABLE_MIN_WIDTH = 700;
+const ROW_COLS = "28px minmax(140px,1fr) 130px 110px 132px 112px 20px";
+const TABLE_MIN_WIDTH = 760;
 
 function PipelineChecklist({ pipeline, isAdmin, onUpdateStep, staff, vendors }) {
   const [expanded, setExpanded] = useState(null);
@@ -795,7 +795,7 @@ function PipelineChecklist({ pipeline, isAdmin, onUpdateStep, staff, vendors }) 
             return (
               <div key={step.id || idx} className="rounded-xl border"
                 style={{ borderColor: isCur ? C.accent : C.border, boxShadow: isCur ? `0 0 0 1px ${C.accent}` : undefined }}>
-                <div className="grid gap-2 items-center px-2 py-3" style={{ gridTemplateColumns: ROW_COLS }}>
+                <div className="grid gap-2 items-center px-2 py-3.5" style={{ gridTemplateColumns: ROW_COLS }}>
                   <div className="flex justify-center">
                     <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
                       style={{
@@ -824,9 +824,9 @@ function PipelineChecklist({ pipeline, isAdmin, onUpdateStep, staff, vendors }) 
                   </div>
                   <div className="text-right">
                     <InlineCombo value={step.externalVendor} isAdmin={isAdmin} placeholder="—" listId="vendor-options"
-                      textClass="text-xs" onSave={v => onUpdateStep(idx, { externalVendor: v })} />
+                      textClass="text-sm font-medium" onSave={v => onUpdateStep(idx, { externalVendor: v })} />
                   </div>
-                  <div className="flex items-center justify-end gap-1 text-xs whitespace-nowrap" style={{ color: C.textDark }}>
+                  <div className="flex items-center justify-end gap-1 text-sm font-medium whitespace-nowrap" style={{ color: C.textDark }}>
                     <InlineDate value={step.startDate} isAdmin={isAdmin} placeholder="—" short
                       onSave={v => onUpdateStep(idx, { startDate: v })} />
                     <span style={{ color: C.textMuted }}>~</span>
@@ -1061,7 +1061,7 @@ function BrandView({ brand, products, isAdmin, initialExpandId, onAdd, onUpdate,
   const statusFilters = [["all", "전체"], ...Object.entries(PS).map(([v, c]) => [v, c.label])];
 
   return (
-    <div className="p-8 max-w-4xl">
+    <div className="p-8 max-w-[67.2rem]">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-bold" style={{ color: C.text }}>{brand}</h2>
@@ -1229,13 +1229,15 @@ function PipelineEditor({ brand, template, onChange, onBack }) {
 }
 
 // ─── 마스터 항목 (담당자/협력사 공용 — 이름 + 메모, 시각적으로 구분) ───────────
-function MasterItem({ name, memo, onUpdateMemo, onRemove }) {
+function MasterItem({ name, memo, onUpdateName, onUpdateMemo, onRemove }) {
   const [editing, setEditing] = useState(false);
   const hasMemo = !!(memo && memo.trim());
   return (
     <div className="rounded-lg mb-1.5 px-3 py-2.5" style={{ background: "#F9F6F1" }}>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-semibold" style={{ color: C.text }}>{name}</span>
+        <InlineText value={name} isAdmin={true}
+          onSave={v => { const t = v.trim(); if (t) onUpdateName(t); }}
+          textClass="text-sm font-semibold" />
         <div className="flex items-center gap-1 flex-shrink-0">
           <button onClick={() => setEditing(true)} title="메모"
             className="p-1 rounded hover:bg-stone-200 transition"
@@ -1264,12 +1266,13 @@ function MasterItem({ name, memo, onUpdateMemo, onRemove }) {
 }
 
 // ─── 설정 ────────────────────────────────────────────────────────────────────
-function SettingsView({ vendors, setVendors, staff, setStaff, salesSheets, setSalesSheets, onEditPipeline }) {
+function SettingsView({ products, templates, vendors, setVendors, staff, setStaff, salesSheets, setSalesSheets, onEditPipeline }) {
   const [addingVendor, setAddingVendor] = useState(false);
   const [nv, setNv] = useState({ role: "", name: "" });
   const addVendor = () => { if (!nv.role || !nv.name) return; setVendors(p => [...p, { ...nv, id: uid(), memo: "" }]); setNv({ role: "", name: "" }); setAddingVendor(false); };
   const rmVendor = (id) => setVendors(p => p.filter(v => v.id !== id));
   const updateVendorMemo = (id, memo) => setVendors(p => p.map(v => v.id === id ? { ...v, memo } : v));
+  const updateVendorName = (id, name) => setVendors(p => p.map(v => v.id === id ? { ...v, name } : v));
   const grouped = vendors.reduce((a, v) => { (a[v.role] = a[v.role] || []).push(v); return a; }, {});
 
   const [addingStaff, setAddingStaff] = useState(false);
@@ -1277,14 +1280,35 @@ function SettingsView({ vendors, setVendors, staff, setStaff, salesSheets, setSa
   const addStaff = () => { if (!newStaffName.trim()) return; setStaff(p => [...p, { id: uid(), name: newStaffName.trim(), memo: "" }]); setNewStaffName(""); setAddingStaff(false); };
   const rmStaff = (id) => setStaff(p => p.filter(s => s.id !== id));
   const updateStaffMemo = (id, memo) => setStaff(p => p.map(s => s.id === id ? { ...s, memo } : s));
+  const updateStaffName = (id, name) => setStaff(p => p.map(s => s.id === id ? { ...s, name } : s));
 
   const updateSheet = (id, key, val) => setSalesSheets(p => p.map(s => s.id === id ? { ...s, [key]: val } : s));
   const addSheet = () => setSalesSheets(p => [...p, { id: uid(), title: "", url: "" }]);
   const rmSheet = (id) => setSalesSheets(p => p.filter(s => s.id !== id));
 
+  const exportData = () => {
+    const payload = { exportedAt: new Date().toISOString(), products, templates, vendors, staff, salesSheets };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `producthub-backup-${fmt(new Date())}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="p-8 max-w-2xl">
-      <h2 className="text-xl font-bold mb-6" style={{ color: C.text }}>설정</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold" style={{ color: C.text }}>설정</h2>
+        <button onClick={exportData}
+          className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border hover:bg-stone-50 transition"
+          style={{ borderColor: C.border, color: C.textSub }}>
+          <Download size={13} /> 데이터 내보내기
+        </button>
+      </div>
 
       <div className="rounded-2xl border p-6 mb-5" style={{ background: C.card, borderColor: C.border }}>
         <h3 className="text-sm font-semibold mb-4" style={{ color: C.textSub }}>발주/재고 Google Sheets</h3>
@@ -1337,6 +1361,7 @@ function SettingsView({ vendors, setVendors, staff, setStaff, salesSheets, setSa
         <p className="text-xs mb-3" style={{ color: C.textMuted }}>체크리스트의 담당자 칸에서 선택지로 표시돼요. 메모에는 연락처 등을 적어둘 수 있어요.</p>
         {staff.map(s => (
           <MasterItem key={s.id} name={s.name} memo={s.memo}
+            onUpdateName={name => updateStaffName(s.id, name)}
             onUpdateMemo={memo => updateStaffMemo(s.id, memo)} onRemove={() => rmStaff(s.id)} />
         ))}
         {addingStaff && (
@@ -1363,6 +1388,7 @@ function SettingsView({ vendors, setVendors, staff, setStaff, salesSheets, setSa
             <p className="text-xs font-semibold mb-2" style={{ color: C.textMuted }}>{role}</p>
             {vs.map(v => (
               <MasterItem key={v.id} name={v.name} memo={v.memo}
+                onUpdateName={name => updateVendorName(v.id, name)}
                 onUpdateMemo={memo => updateVendorMemo(v.id, memo)} onRemove={() => rmVendor(v.id)} />
             ))}
           </div>
@@ -1525,7 +1551,8 @@ export default function App() {
           onBack={() => nav({ type: "settings" })} />
       );
       case "settings": return (
-        <SettingsView vendors={vendors} setVendors={setVendors}
+        <SettingsView products={products} templates={templates}
+          vendors={vendors} setVendors={setVendors}
           staff={staff} setStaff={setStaff}
           salesSheets={salesSheets} setSalesSheets={setSalesSheets}
           onEditPipeline={brand => nav({ type: "pipeline-editor", brand })} />

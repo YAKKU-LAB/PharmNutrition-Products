@@ -257,41 +257,23 @@ function InlineCombo({ value, onSave, isAdmin, placeholder = "—", textClass = 
 
 // 담당자용 — 다중 선택 가능 (이름 칩 + 직접 입력)
 function AssigneeCell({ names, isAdmin, onChange }) {
-  const [open, setOpen] = useState(false);
-  const [input, setInput] = useState("");
+  const [focused, setFocused] = useState(false);
   const list = names || [];
   if (!isAdmin) {
     return <span className={`text-sm ${list.length ? "font-medium" : ""}`} style={{ color: list.length ? C.textDark : C.textMuted }}>{list.length ? list.join(", ") : "—"}</span>;
   }
-  const add = () => { const v = input.trim(); if (!v || list.includes(v)) { setInput(""); return; } onChange([...list, v]); setInput(""); };
-  const remove = (n) => onChange(list.filter(x => x !== n));
+  const commit = (raw) => {
+    const arr = raw.split(",").map(s => s.trim()).filter(Boolean);
+    onChange(arr);
+  };
   return (
-    <div className="relative inline-block" onClick={e => e.stopPropagation()}>
-      <span onClick={() => setOpen(o => !o)}
-        className={`text-sm cursor-pointer rounded px-1 -mx-1 hover:bg-stone-100 transition ${list.length ? "font-medium" : ""}`}
-        style={{ color: list.length ? C.textDark : C.textMuted }}>
-        {list.length ? list.join(", ") : "—"}
-      </span>
-      {open && (
-        <div className="absolute z-30 top-6 right-0 w-56 rounded-xl border shadow-lg p-3" style={{ background: C.card, borderColor: C.border }}>
-          {list.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-2">
-              {list.map(n => (
-                <span key={n} className="text-xs pl-2 pr-1 py-0.5 rounded-full flex items-center gap-1" style={{ background: C.accentLight, color: C.accent }}>
-                  {n}<button onClick={() => remove(n)}><X size={10} /></button>
-                </span>
-              ))}
-            </div>
-          )}
-          <input list="staff-options" autoFocus value={input} onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") add(); }}
-            placeholder="이름 입력 후 Enter" className="w-full text-xs border rounded-lg px-2 py-1.5 outline-none" style={{ borderColor: C.border }} />
-          <div className="flex justify-end mt-2">
-            <button onClick={() => setOpen(false)} className="text-xs px-2 py-1" style={{ color: C.textSub }}>닫기</button>
-          </div>
-        </div>
-      )}
-    </div>
+    <input list="staff-options" defaultValue={list.join(", ")} placeholder="—"
+      onClick={e => e.stopPropagation()}
+      onFocus={() => setFocused(true)}
+      onBlur={e => { setFocused(false); commit(e.target.value); }}
+      onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
+      className="w-full text-right bg-transparent outline-none text-sm font-medium"
+      style={{ borderBottom: focused ? `1px solid ${C.accent}` : "1px solid transparent", color: list.length ? C.textDark : C.textMuted }} />
   );
 }
 
@@ -352,9 +334,9 @@ function LinkChip({ link }) {
     <div className="relative" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <button type="button"
         onClick={(e) => { e.stopPropagation(); window.open(link.url, "_blank", "noopener,noreferrer"); }}
-        className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-stone-200 active:bg-stone-300 transition flex-shrink-0"
-        style={{ background: "#F3F1EC" }}>
-        <Link2 size={12} style={{ color: C.accent }} />
+        className="w-6 h-6 rounded-md flex items-center justify-center transition flex-shrink-0 shadow-sm hover:brightness-110 active:brightness-95"
+        style={{ background: C.accent }}>
+        <Link2 size={12} style={{ color: "#fff" }} />
       </button>
       {hover && (
         <div className="absolute z-40 bottom-7 right-0 whitespace-nowrap text-xs px-2 py-1 rounded-lg shadow-lg pointer-events-none"
@@ -594,8 +576,11 @@ function GanttChart({ rows, emptyMessage, leftWidth = 200, pxPerDay = 10, maxBod
   let maxDate = new Date(Math.max(...allDates));
   minDate = addDays(minDate, -4);
   maxDate = addDays(maxDate, 4);
-  const { totalWidth, monthMarks, weekMarks } = buildRuler(minDate, maxDate, pxPerDay);
   const today = new Date();
+  // 데이터 범위에 오늘이 포함되지 않으면(전부 과거/미래 일정) 범위를 넓혀서 항상 오늘이 보이게 함
+  if (today < minDate) minDate = addDays(today, -4);
+  if (today > maxDate) maxDate = addDays(today, 4);
+  const { totalWidth, monthMarks, weekMarks } = buildRuler(minDate, maxDate, pxPerDay);
   const todayOffset = (today >= minDate && today <= maxDate) ? dayDiff(minDate, today) * pxPerDay : null;
 
   // 헤더(월/주차)는 고정, 본문만 세로 스크롤 — 가로 스크롤은 둘을 동기화
@@ -612,6 +597,17 @@ function GanttChart({ rows, emptyMessage, leftWidth = 200, pxPerDay = 10, maxBod
     syncing.current = true;
     if (headerScrollRef.current) headerScrollRef.current.scrollLeft = bodyScrollRef.current.scrollLeft;
   };
+
+  // 처음 열었을 때 오늘 날짜가 보이는 위치로 자동 스크롤 (왼쪽에 약간의 여유를 둠)
+  useEffect(() => {
+    if (todayOffset != null) {
+      const target = Math.max(0, todayOffset - 160);
+      if (bodyScrollRef.current) bodyScrollRef.current.scrollLeft = target;
+      if (headerScrollRef.current) headerScrollRef.current.scrollLeft = target;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   return (
     <div className="border rounded-2xl overflow-hidden" style={{ borderColor: C.border, background: C.card }}>
@@ -999,6 +995,7 @@ function ProductCard({ product, isAdmin, isExpanded, onToggle, onUpdate, onUpdat
     setLt(""); setLu(""); setAddingLink(false);
   };
   const rmLink = (id) => onUpdate({ ...product, links: product.links.filter(l => l.id !== id) });
+  const updateLinkTitle = (id, title) => onUpdate({ ...product, links: product.links.map(l => l.id === id ? { ...l, title } : l) });
 
   const pipeline = product.pipeline || [];
   const done = pipeline.filter(s => s.stepStatus === "done").length;
@@ -1089,13 +1086,17 @@ function ProductCard({ product, isAdmin, isExpanded, onToggle, onUpdate, onUpdat
             <div className="space-y-2">
               {(product.links || []).map(l => (
                 <div key={l.id} className="flex items-center gap-2">
-                  <a href={l.url} target="_blank" rel="noopener noreferrer"
-                    className="flex-1 flex items-center gap-3 rounded-xl p-3.5 border hover:shadow-sm transition"
+                  <div className="flex-1 flex items-center gap-3 rounded-xl p-3.5 border hover:shadow-sm transition"
                     style={{ background: C.card, borderColor: C.border }}>
-                    <ExternalLink size={13} style={{ color: C.accent }} />
-                    <span className="text-sm flex-1" style={{ color: C.text }}>{l.title}</span>
-                    <ChevronRight size={12} style={{ color: C.border }} />
-                  </a>
+                    <a href={l.url} target="_blank" rel="noopener noreferrer" title="새 탭에서 열기" className="flex-shrink-0">
+                      <ExternalLink size={13} style={{ color: C.accent }} />
+                    </a>
+                    <InlineText value={l.title} isAdmin={isAdmin} placeholder="링크 제목"
+                      onSave={v => updateLinkTitle(l.id, v)} textClass="text-sm flex-1" />
+                    <a href={l.url} target="_blank" rel="noopener noreferrer" title="새 탭에서 열기" className="flex-shrink-0">
+                      <ChevronRight size={12} style={{ color: C.border }} />
+                    </a>
+                  </div>
                   {isAdmin && <button onClick={() => rmLink(l.id)} style={{ color: C.textMuted }}><X size={14} /></button>}
                 </div>
               ))}

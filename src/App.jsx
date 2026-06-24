@@ -3,7 +3,7 @@ import {
   Plus, ChevronRight, Trash2, ExternalLink, Check, AlertCircle,
   ArrowUp, ArrowDown, Settings, LogOut, X, BarChart2, Calendar,
   ChevronLeft, Lock, Package, List, GanttChartSquare, Link2, Edit2,
-  ChevronsLeft, ChevronsRight, StickyNote, CloudOff, Loader2, Download
+  ChevronsLeft, ChevronsRight, StickyNote, CloudOff, Loader2, Download, GripVertical
 } from "lucide-react";
 import { supabase, STATE_TABLE, STATE_ROW_ID } from "./supabaseClient";
 
@@ -23,7 +23,7 @@ const C = {
 
 // ─── PASSWORDS ───────────────────────────────────────────────────────────────
 const PW_VIEWER = "1";
-const PW_ADMIN  = "효주이원";
+const PW_ADMIN  = "gywndldnjs";
 
 // ─── BRAND LINES ────────────────────────────────────────────────────────────
 const BRANDS = ["건강기능식품", "일반의약품", "화장품"];
@@ -179,22 +179,22 @@ const SAMPLE = [
 
 // ─── 상태 설정 ───────────────────────────────────────────────────────────────
 const PS = {
-  planning:    { label: "기획중",   cls: "bg-purple-100 text-purple-700" },
-  in_progress: { label: "진행중",   cls: "bg-blue-100 text-blue-700" },
-  suspended:   { label: "중단",     cls: "bg-gray-100 text-gray-500" },
-  launched:    { label: "출시완료", cls: "bg-green-100 text-green-700" },
+  planning:    { label: "기획중",   style: { background: "#EFEAF7", color: "#7C6BAE" } },
+  in_progress: { label: "진행중",   style: { background: C.accentLight, color: C.accent } },
+  suspended:   { label: "중단",     style: { background: "#F1EFEA", color: "#92897A" } },
+  launched:    { label: "출시완료", style: { background: "#E7F0E2", color: "#5F7C55" } },
 };
 const SS = {
-  pending:     { label: "예정",   cls: "bg-gray-100 text-gray-400 border-gray-200", dot: "#D6D3D1" },
-  in_progress: { label: "진행중", cls: "bg-blue-100 text-blue-700 border-blue-200", dot: C.accent },
-  done:        { label: "완료",   cls: "bg-green-100 text-green-700 border-green-200", dot: "#22C55E" },
-  delayed:     { label: "지연",   cls: "bg-red-100 text-red-600 border-red-200", dot: "#EF4444" },
+  pending:     { label: "예정",   style: { background: "#F1EFEA", color: "#A39C8E", borderColor: "#E5E1D8" }, dot: "#D6D3D1" },
+  in_progress: { label: "진행중", style: { background: C.accentLight, color: C.accent, borderColor: "#E5CFC2" }, dot: C.accent },
+  done:        { label: "완료",   style: { background: "#E7F0E2", color: "#5F7C55", borderColor: "#D3E3CB" }, dot: "#7C9B70" },
+  delayed:     { label: "지연",   style: { background: "#FBEAE6", color: "#BD5A45", borderColor: "#F2D3CB" }, dot: "#BD5A45" },
 };
-const STATUS_BAR = { planning: "#A855F7", in_progress: C.accent, suspended: "#9CA3AF", launched: "#22C55E" };
+const STATUS_BAR = { planning: "#8C72C7", in_progress: C.accent, suspended: "#A39C8E", launched: "#7C9B70" };
 
 // ─── 표시용 마이크로 컴포넌트 ──────────────────────────────────────────────
-const Badge = ({ s }) => { const c = PS[s] || PS.planning; return <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${c.cls}`}>{c.label}</span>; };
-const StepBadge = ({ s }) => { const c = SS[s] || SS.pending; return <span className={`text-xs font-medium px-2 py-0.5 rounded border whitespace-nowrap ${c.cls}`}>{c.label}</span>; };
+const Badge = ({ s }) => { const c = PS[s] || PS.planning; return <span className="text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap" style={c.style}>{c.label}</span>; };
+const StepBadge = ({ s }) => { const c = SS[s] || SS.pending; return <span className="text-xs font-medium px-2 py-0.5 rounded border whitespace-nowrap" style={c.style}>{c.label}</span>; };
 const ProgressBar = ({ pipeline }) => {
   if (!pipeline?.length) return null;
   const done = pipeline.filter(s => s.stepStatus === "done").length;
@@ -559,24 +559,28 @@ function buildRuler(minDate, maxDate, pxPerDay) {
   const totalWidth = totalDays * pxPerDay;
   const monthMarks = [];
   let cur = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
-  let lastYear = null;
   while (cur <= maxDate) {
     const offset = Math.max(0, dayDiff(minDate, cur) * pxPerDay);
-    const showYear = cur.getFullYear() !== lastYear;
-    monthMarks.push({ key: cur.getTime(), offset, label: showYear ? `${cur.getFullYear()}년 ${cur.getMonth() + 1}월` : `${cur.getMonth() + 1}월` });
-    lastYear = cur.getFullYear();
+    monthMarks.push({ key: cur.getTime(), offset, label: `${cur.getFullYear()}년 ${cur.getMonth() + 1}월`, monthStart: new Date(cur) });
     cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
   }
+  // 주차: 전체 기간 기준이 아니라, 매월 1일을 1W로 다시 시작
   const weekMarks = [];
-  let w = 0;
-  while (w * 7 <= totalDays) {
-    weekMarks.push({ key: w, offset: w * 7 * pxPerDay, label: `${w + 1}W` });
-    w++;
-  }
+  monthMarks.forEach(m => {
+    const nextMonth = new Date(m.monthStart.getFullYear(), m.monthStart.getMonth() + 1, 1);
+    let wIdx = 0;
+    let wDate = new Date(m.monthStart);
+    while (wDate < nextMonth && wDate <= maxDate) {
+      const offset = Math.max(0, dayDiff(minDate, wDate) * pxPerDay);
+      weekMarks.push({ key: `${m.key}-${wIdx}`, offset, label: `${wIdx + 1}W` });
+      wIdx++;
+      wDate = addDays(wDate, 7);
+    }
+  });
   return { totalWidth, monthMarks, weekMarks };
 }
 
-function GanttChart({ rows, emptyMessage, leftWidth = 200, pxPerDay = 10 }) {
+function GanttChart({ rows, emptyMessage, leftWidth = 200, pxPerDay = 10, maxBodyHeight = 420 }) {
   const dated = rows.filter(r => r.start || r.end);
   if (dated.length === 0) {
     return (
@@ -594,53 +598,78 @@ function GanttChart({ rows, emptyMessage, leftWidth = 200, pxPerDay = 10 }) {
   const today = new Date();
   const todayOffset = (today >= minDate && today <= maxDate) ? dayDiff(minDate, today) * pxPerDay : null;
 
+  // 헤더(월/주차)는 고정, 본문만 세로 스크롤 — 가로 스크롤은 둘을 동기화
+  const headerScrollRef = useRef(null);
+  const bodyScrollRef = useRef(null);
+  const syncing = useRef(false);
+  const onHeaderScroll = () => {
+    if (syncing.current) { syncing.current = false; return; }
+    syncing.current = true;
+    if (bodyScrollRef.current) bodyScrollRef.current.scrollLeft = headerScrollRef.current.scrollLeft;
+  };
+  const onBodyScroll = () => {
+    if (syncing.current) { syncing.current = false; return; }
+    syncing.current = true;
+    if (headerScrollRef.current) headerScrollRef.current.scrollLeft = bodyScrollRef.current.scrollLeft;
+  };
+
   return (
-    <div className="flex border rounded-2xl overflow-hidden" style={{ borderColor: C.border, background: C.card }}>
-      <div className="flex-shrink-0 border-r" style={{ width: leftWidth, borderColor: C.border }}>
-        <div className="border-b" style={{ height: HEADER_H, borderColor: C.border }} />
-        {rows.map(r => (
-          <div key={r.id} onClick={r.onClick} title={r.label}
-            className={`flex items-center px-3 text-xs border-b truncate ${r.onClick ? "cursor-pointer hover:bg-stone-50" : ""}`}
-            style={{ height: ROW_H, borderColor: "#F5F1EA", color: C.text }}>
-            {r.label}
+    <div className="border rounded-2xl overflow-hidden" style={{ borderColor: C.border, background: C.card }}>
+      {/* 고정 헤더: 월/주차 라벨 — 스크롤해도 항상 보임 */}
+      <div className="flex">
+        <div className="flex-shrink-0 border-r border-b" style={{ width: leftWidth, height: HEADER_H, borderColor: C.border }} />
+        <div ref={headerScrollRef} onScroll={onHeaderScroll} className="overflow-x-auto flex-1 scrollbar-hidden">
+          <div style={{ width: totalWidth, position: "relative" }}>
+            <div className="relative border-b" style={{ height: 36, borderColor: C.border }}>
+              {monthMarks.map(m => (
+                <div key={m.key} className="absolute top-0 h-full flex items-center text-xs font-medium px-2 border-l whitespace-nowrap"
+                  style={{ left: m.offset, borderColor: "#F5F1EA", color: C.textSub }}>{m.label}</div>
+              ))}
+            </div>
+            <div className="relative border-b" style={{ height: 22, borderColor: C.border }}>
+              {weekMarks.map(w => (
+                <div key={w.key} className="absolute top-0 h-full flex items-center text-[10px] px-1.5 border-l"
+                  style={{ left: w.offset, borderColor: "#F8F4EC", color: C.textMuted }}>{w.label}</div>
+              ))}
+            </div>
           </div>
-        ))}
+        </div>
       </div>
-      <div className="overflow-x-auto flex-1">
-        <div style={{ width: totalWidth, position: "relative" }}>
-          <div className="relative border-b" style={{ height: 36, borderColor: C.border }}>
-            {monthMarks.map(m => (
-              <div key={m.key} className="absolute top-0 h-full flex items-center text-xs font-medium px-2 border-l whitespace-nowrap"
-                style={{ left: m.offset, borderColor: "#F5F1EA", color: C.textSub }}>{m.label}</div>
-            ))}
+      {/* 본문: 세로 스크롤(내용이 많을 때만), 가로 스크롤은 위 헤더와 동기화 */}
+      <div className="flex" style={{ maxHeight: maxBodyHeight, overflowY: "auto" }}>
+        <div className="flex-shrink-0 border-r" style={{ width: leftWidth, borderColor: C.border }}>
+          {rows.map(r => (
+            <div key={r.id} onClick={r.onClick} title={r.label}
+              className={`flex items-center px-3 text-xs border-b truncate ${r.onClick ? "cursor-pointer hover:bg-stone-50" : ""}`}
+              style={{ height: ROW_H, borderColor: "#F5F1EA", color: C.text }}>
+              {r.label}
+            </div>
+          ))}
+        </div>
+        <div ref={bodyScrollRef} onScroll={onBodyScroll} className="overflow-x-auto flex-1">
+          <div style={{ width: totalWidth, position: "relative" }}>
+            {todayOffset != null && (
+              <div className="absolute border-l border-dashed z-10" style={{ left: todayOffset, top: 0, bottom: 0, borderColor: C.accent }} />
+            )}
+            {rows.map(r => {
+              const s = r.start ? dayDiff(minDate, r.start) * pxPerDay : null;
+              const e = r.end ? dayDiff(minDate, r.end) * pxPerDay : null;
+              return (
+                <div key={r.id} onClick={r.onClick}
+                  className={`border-b relative ${r.onClick ? "cursor-pointer hover:bg-stone-50/60" : ""}`}
+                  style={{ height: ROW_H, borderColor: "#F5F1EA" }}>
+                  <div className="absolute left-0 right-0 top-1/2" style={{ borderTop: "1px solid #EDE9E3" }} />
+                  {s != null && e != null ? (
+                    <div title={r.label} className="absolute rounded-full"
+                      style={{ left: Math.min(s, e), width: Math.max(Math.abs(e - s), 10), top: "50%", transform: "translateY(-50%)", height: 10, background: r.color }} />
+                  ) : (s != null || e != null) ? (
+                    <div title={r.label} className="absolute rounded-full border-2 border-white shadow-sm"
+                      style={{ left: (s ?? e) - 7, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, background: r.color, zIndex: 2 }} />
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
-          <div className="relative border-b" style={{ height: 22, borderColor: C.border }}>
-            {weekMarks.map(w => (
-              <div key={w.key} className="absolute top-0 h-full flex items-center text-[10px] px-1.5 border-l"
-                style={{ left: w.offset, borderColor: "#F8F4EC", color: C.textMuted }}>{w.label}</div>
-            ))}
-          </div>
-          {todayOffset != null && (
-            <div className="absolute border-l border-dashed z-10" style={{ left: todayOffset, top: HEADER_H, bottom: 0, borderColor: C.accent }} />
-          )}
-          {rows.map(r => {
-            const s = r.start ? dayDiff(minDate, r.start) * pxPerDay : null;
-            const e = r.end ? dayDiff(minDate, r.end) * pxPerDay : null;
-            return (
-              <div key={r.id} onClick={r.onClick}
-                className={`border-b relative ${r.onClick ? "cursor-pointer hover:bg-stone-50/60" : ""}`}
-                style={{ height: ROW_H, borderColor: "#F5F1EA" }}>
-                <div className="absolute left-0 right-0 top-1/2" style={{ borderTop: "1px solid #EDE9E3" }} />
-                {s != null && e != null ? (
-                  <div title={r.label} className="absolute rounded-full"
-                    style={{ left: Math.min(s, e), width: Math.max(Math.abs(e - s), 10), top: "50%", transform: "translateY(-50%)", height: 10, background: r.color }} />
-                ) : (s != null || e != null) ? (
-                  <div title={r.label} className="absolute rounded-full border-2 border-white shadow-sm"
-                    style={{ left: (s ?? e) - 7, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, background: r.color, zIndex: 2 }} />
-                ) : null}
-              </div>
-            );
-          })}
         </div>
       </div>
     </div>
@@ -766,12 +795,30 @@ function Dashboard({ products, salesSheets, onNav }) {
 }
 
 // ─── 파이프라인 체크리스트 ────────────────────────────────────────────────────
-const ROW_COLS = "28px minmax(140px,1fr) 130px 110px 132px 112px 20px";
-const TABLE_MIN_WIDTH = 760;
+const ROW_COLS = "18px 28px minmax(140px,1fr) 130px 110px 132px 112px 44px";
+const TABLE_MIN_WIDTH = 800;
 
-function PipelineChecklist({ pipeline, isAdmin, onUpdateStep, staff, vendors }) {
+function PipelineChecklist({ pipeline, isAdmin, onUpdateStep, onAddStep, onRemoveStep, onReorderSteps, staff, vendors }) {
   const [expanded, setExpanded] = useState(null);
+  const [dragIdx, setDragIdx] = useState(null);
+  const [overIdx, setOverIdx] = useState(null);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
   const currentIdx = pipeline.findIndex(s => s.stepStatus === "in_progress");
+
+  const handleAdd = () => {
+    if (!newName.trim()) return;
+    onAddStep(newName.trim());
+    setNewName(""); setAdding(false);
+  };
+  const handleRemove = (idx, name) => {
+    if (!window.confirm(`"${name}" 단계를 삭제할까요?`)) return;
+    onRemoveStep(idx);
+  };
+  const handleDrop = (idx) => {
+    if (dragIdx !== null && dragIdx !== idx) onReorderSteps(dragIdx, idx);
+    setDragIdx(null); setOverIdx(null);
+  };
 
   return (
     <div className="overflow-x-auto">
@@ -780,6 +827,7 @@ function PipelineChecklist({ pipeline, isAdmin, onUpdateStep, staff, vendors }) 
 
       <div style={{ minWidth: TABLE_MIN_WIDTH }}>
         <div className="grid gap-2 px-2 mb-2" style={{ gridTemplateColumns: ROW_COLS }}>
+          <div />
           <div />
           <div className="text-xs font-medium" style={{ color: C.textMuted }}>단계</div>
           <div className="text-xs font-medium text-right" style={{ color: C.textMuted }}>담당자</div>
@@ -792,16 +840,36 @@ function PipelineChecklist({ pipeline, isAdmin, onUpdateStep, staff, vendors }) 
           {pipeline.map((step, idx) => {
             const isExp = expanded === idx;
             const isCur = idx === currentIdx;
+            const isDragging = dragIdx === idx;
+            const isDropTarget = overIdx === idx && dragIdx !== null && dragIdx !== idx;
             return (
-              <div key={step.id || idx} className="rounded-xl border"
-                style={{ borderColor: isCur ? C.accent : C.border, boxShadow: isCur ? `0 0 0 1px ${C.accent}` : undefined }}>
+              <div key={step.id || idx}
+                onDragOver={e => { if (isAdmin) { e.preventDefault(); if (overIdx !== idx) setOverIdx(idx); } }}
+                onDrop={e => { if (isAdmin) { e.preventDefault(); handleDrop(idx); } }}
+                className="rounded-xl border transition"
+                style={{
+                  borderColor: isCur ? C.accent : C.border,
+                  boxShadow: isCur ? `0 0 0 1px ${C.accent}` : isDropTarget ? `0 0 0 2px ${C.accent}` : undefined,
+                  opacity: isDragging ? 0.4 : 1,
+                }}>
                 <div className="grid gap-2 items-center px-2 py-3.5" style={{ gridTemplateColumns: ROW_COLS }}>
+                  <div className="flex justify-center">
+                    {isAdmin ? (
+                      <span draggable
+                        onDragStart={() => setDragIdx(idx)}
+                        onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
+                        className="cursor-grab active:cursor-grabbing flex items-center justify-center"
+                        style={{ color: C.textMuted }} title="드래그해서 순서 변경">
+                        <GripVertical size={14} />
+                      </span>
+                    ) : <span />}
+                  </div>
                   <div className="flex justify-center">
                     <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
                       style={{
-                        background: step.stepStatus === "done" ? "#22C55E" :
+                        background: step.stepStatus === "done" ? "#7C9B70" :
                                     step.stepStatus === "in_progress" ? C.accent :
-                                    step.stepStatus === "delayed" ? "#EF4444" : "#EDE9E3",
+                                    step.stepStatus === "delayed" ? "#BD5A45" : "#EDE9E3",
                         color: step.stepStatus === "pending" ? "#A8A29E" : "#fff",
                       }}>
                       {step.stepStatus === "done" ? <Check size={12} /> : idx + 1}
@@ -838,9 +906,17 @@ function PipelineChecklist({ pipeline, isAdmin, onUpdateStep, staff, vendors }) 
                       onAdd={link => onUpdateStep(idx, { dataLinks: [...(step.dataLinks || []), link] })}
                       onRemove={id => onUpdateStep(idx, { dataLinks: (step.dataLinks || []).filter(l => l.id !== id) })} />
                   </div>
-                  <button onClick={() => setExpanded(isExp ? null : idx)} style={{ color: C.border }}>
-                    <span style={{ display: "inline-block", transform: isExp ? "rotate(180deg)" : undefined, transition: "transform .2s" }}>▾</span>
-                  </button>
+                  <div className="flex items-center justify-end gap-0.5">
+                    {isAdmin && (
+                      <button onClick={() => handleRemove(idx, step.name)} title="단계 삭제"
+                        className="p-1 rounded hover:bg-red-50 hover:text-red-500" style={{ color: C.textMuted }}>
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                    <button onClick={() => setExpanded(isExp ? null : idx)} style={{ color: C.border }}>
+                      <span style={{ display: "inline-block", transform: isExp ? "rotate(180deg)" : undefined, transition: "transform .2s" }}>▾</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* 메모: 내용이 있을 때만 토글 없이 항상 표시 */}
@@ -868,6 +944,25 @@ function PipelineChecklist({ pipeline, isAdmin, onUpdateStep, staff, vendors }) 
             );
           })}
         </div>
+
+        {isAdmin && (
+          adding ? (
+            <div className="flex gap-2 mt-3">
+              <input autoFocus value={newName} onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleAdd()}
+                placeholder="단계 이름" className="flex-1 text-sm border rounded-xl px-3 py-2" style={{ borderColor: C.border }} />
+              <button onClick={handleAdd} className="text-white px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: C.accent }}>추가</button>
+              <button onClick={() => { setAdding(false); setNewName(""); }}
+                className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: C.border, color: C.textSub }}>취소</button>
+            </div>
+          ) : (
+            <button onClick={() => setAdding(true)}
+              className="flex items-center gap-1.5 text-xs mt-3 px-3 py-2 rounded-lg border hover:bg-stone-50 transition"
+              style={{ borderColor: C.border, color: C.accent }}>
+              <Plus size={12} /> 이 제품에 단계 추가
+            </button>
+          )
+        )}
       </div>
     </div>
   );
@@ -882,6 +977,20 @@ function ProductCard({ product, isAdmin, isExpanded, onToggle, onUpdate, onUpdat
   const set = (key) => (v) => onUpdate({ ...product, [key]: v });
   const updateStep = (idx, updates) => {
     const next = product.pipeline.map((s, i) => i === idx ? { ...s, ...updates } : s);
+    onUpdatePipeline(next);
+  };
+  const addStep = (name) => {
+    const newStep = {
+      id: uid(), name, internalAssignees: [], externalVendor: "",
+      stepStatus: "pending", startDate: "", targetDate: "", notes: "", dataLinks: [],
+    };
+    onUpdatePipeline([...(product.pipeline || []), newStep]);
+  };
+  const removeStep = (idx) => onUpdatePipeline(product.pipeline.filter((_, i) => i !== idx));
+  const reorderSteps = (fromIdx, toIdx) => {
+    const next = [...product.pipeline];
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
     onUpdatePipeline(next);
   };
   const addLink = () => {
@@ -933,7 +1042,7 @@ function ProductCard({ product, isAdmin, isExpanded, onToggle, onUpdate, onUpdat
                 </span>
               )}
               {product.targetLaunchDate && (
-                <span className="text-xs font-medium px-2.5 py-1 rounded-lg whitespace-nowrap" style={{ background: "#EFF6FF", color: "#2563EB" }}>
+                <span className="text-xs font-medium px-2.5 py-1 rounded-lg whitespace-nowrap" style={{ background: "#E6EEF1", color: "#4A7588" }}>
                   목표 {product.targetLaunchDate}
                 </span>
               )}
@@ -1029,7 +1138,9 @@ function ProductCard({ product, isAdmin, isExpanded, onToggle, onUpdate, onUpdat
               ))}
             </div>
             {pipeTab === "checklist" ? (
-              <PipelineChecklist pipeline={pipeline} isAdmin={isAdmin} onUpdateStep={updateStep} staff={staff} vendors={vendors} />
+              <PipelineChecklist pipeline={pipeline} isAdmin={isAdmin} onUpdateStep={updateStep}
+                onAddStep={addStep} onRemoveStep={removeStep} onReorderSteps={reorderSteps}
+                staff={staff} vendors={vendors} />
             ) : (
               <PipelineTimeline pipeline={pipeline} />
             )}
@@ -1562,7 +1673,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: C.bg, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: C.bg, fontFamily: "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif" }}>
       <Sidebar view={view} onNav={nav} isAdmin={isAdmin} onLogout={() => setAuth("locked")} />
       <main className="flex-1 overflow-y-auto">{renderMain()}</main>
       {showAdd && (

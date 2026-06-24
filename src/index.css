@@ -5,3 +5,18 @@
 html, body, #root {
   height: 100%;
 }
+
+body {
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+    system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo',
+    'Noto Sans KR', 'Malgun Gothic', sans-serif;
+}
+
+/* 타임라인 헤더용 — 가로 스크롤은 동작하되 스크롤바는 안 보이게 (본문 스크롤바와 동기화되어 중복 표시 방지) */
+.scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}

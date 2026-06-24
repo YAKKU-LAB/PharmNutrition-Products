@@ -20,3 +20,23 @@ body {
 .scrollbar-hidden::-webkit-scrollbar {
   display: none;
 }
+
+/* 타임라인 본문 스크롤바 — 브라우저 기본 스크롤바 대신 얇고 차분한 스타일 */
+.gantt-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #D9D0C2 transparent;
+}
+.gantt-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.gantt-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.gantt-scroll::-webkit-scrollbar-thumb {
+  background: #D9D0C2;
+  border-radius: 8px;
+}
+.gantt-scroll::-webkit-scrollbar-thumb:hover {
+  background: #C9BFAE;
+}

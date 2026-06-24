@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Plus, ChevronRight, Trash2, ExternalLink, Check, AlertCircle,
-  ArrowUp, ArrowDown, Settings, LogOut, X, BarChart2, Calendar,
+  Settings, LogOut, X, BarChart2, Calendar,
   ChevronLeft, Lock, Package, List, GanttChartSquare, Link2, Edit2,
-  ChevronsLeft, ChevronsRight, StickyNote, CloudOff, Loader2, Download, GripVertical
+  ChevronsLeft, ChevronsRight, StickyNote, CloudOff, Loader2, Download, GripVertical, MoreVertical
 } from "lucide-react";
 import { supabase, STATE_TABLE, STATE_ROW_ID } from "./supabaseClient";
 
@@ -390,6 +390,76 @@ function LinkChips({ links, isAdmin, onAdd, onRemove }) {
   );
 }
 
+// ─── 제품 상단 링크 행 (클릭하면 이동, ⋮ 메뉴로 이름/URL 수정) ─────────────────
+function ProductLinkRow({ link, isAdmin, onUpdate, onRemove }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [editField, setEditField] = useState(null); // 'title' | 'url' | null
+  const [val, setVal] = useState("");
+
+  const startEdit = (field) => {
+    setEditField(field);
+    setVal(field === "title" ? link.title : link.url);
+    setMenuOpen(false);
+  };
+  const commit = () => {
+    const v = val.trim();
+    if (v) onUpdate({ ...link, [editField]: v });
+    setEditField(null);
+  };
+
+  if (editField) {
+    return (
+      <div className="flex items-center gap-2">
+        <input autoFocus value={val} onChange={e => setVal(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditField(null); }}
+          onBlur={commit}
+          placeholder={editField === "title" ? "링크 제목" : "URL"}
+          className="flex-1 text-sm border rounded-xl px-3.5 py-3" style={{ borderColor: C.accent }} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <a href={link.url} target="_blank" rel="noopener noreferrer"
+        className="flex-1 flex items-center gap-3 rounded-xl p-3.5 border hover:shadow-sm transition"
+        style={{ background: C.card, borderColor: C.border }}>
+        <ExternalLink size={13} style={{ color: C.accent }} />
+        <span className="text-sm flex-1" style={{ color: C.text }}>{link.title}</span>
+        <ChevronRight size={12} style={{ color: C.border }} />
+      </a>
+      {isAdmin && (
+        <div className="relative flex-shrink-0">
+          <button onClick={() => setMenuOpen(o => !o)}
+            className="p-1.5 rounded-lg hover:bg-stone-100 transition" style={{ color: C.textMuted }}>
+            <MoreVertical size={14} />
+          </button>
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-20" onClick={() => setMenuOpen(false)} />
+              <div className="absolute z-30 top-9 right-0 w-36 rounded-xl border shadow-lg py-1 overflow-hidden"
+                style={{ background: C.card, borderColor: C.border }}>
+                <button onClick={() => startEdit("title")}
+                  className="w-full text-left text-xs px-3.5 py-2 hover:bg-stone-50 transition" style={{ color: C.textDark }}>
+                  이름 변경
+                </button>
+                <button onClick={() => startEdit("url")}
+                  className="w-full text-left text-xs px-3.5 py-2 hover:bg-stone-50 transition" style={{ color: C.textDark }}>
+                  URL 변경
+                </button>
+                <button onClick={() => { onRemove(); setMenuOpen(false); }}
+                  className="w-full text-left text-xs px-3.5 py-2 hover:bg-red-50 transition text-red-500">
+                  삭제
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── AUTH ────────────────────────────────────────────────────────────────────
 function AuthScreen({ onAuth }) {
   const [pw, setPw] = useState("");
@@ -491,7 +561,7 @@ function Sidebar({ view, onNav, isAdmin, onLogout }) {
       </div>
       <nav className="flex-1 space-y-0.5">
         {item("대시보드", { type: "dashboard" }, BarChart2)}
-        <div className="pt-3 pb-1 px-2"><p className="text-xs font-semibold" style={{ color: C.textMuted }}>브랜드 라인</p></div>
+        <div className="pt-3 pb-1 px-2"><p className="text-xs font-semibold" style={{ color: C.textMuted }}>카테고리</p></div>
         {BRANDS.map(b => item(b, { type: "brand", brand: b }, Package))}
         {isAdmin && (
           <>
@@ -614,25 +684,37 @@ function GanttChart({ rows, emptyMessage, leftWidth = 200, pxPerDay = 10, maxBod
       {/* 고정 헤더: 월/주차 라벨 — 스크롤해도 항상 보임 */}
       <div className="flex">
         <div className="flex-shrink-0 border-r border-b" style={{ width: leftWidth, height: HEADER_H, borderColor: C.border }} />
-        <div ref={headerScrollRef} onScroll={onHeaderScroll} className="overflow-x-auto flex-1 scrollbar-hidden">
+        <div ref={headerScrollRef} onScroll={onHeaderScroll} className="overflow-x-auto flex-1 scrollbar-hidden min-h-0">
           <div style={{ width: totalWidth, position: "relative" }}>
             <div className="relative border-b" style={{ height: 36, borderColor: C.border }}>
-              {monthMarks.map(m => (
-                <div key={m.key} className="absolute top-0 h-full flex items-center text-xs font-medium px-2 border-l whitespace-nowrap"
-                  style={{ left: m.offset, borderColor: "#F5F1EA", color: C.textSub }}>{m.label}</div>
-              ))}
+              {monthMarks.map((m, i) => {
+                const w = (monthMarks[i + 1]?.offset ?? totalWidth) - m.offset;
+                return (
+                  <div key={m.key} className="absolute top-0 h-full border-l overflow-hidden"
+                    style={{ left: m.offset, width: w, borderColor: "#F5F1EA" }}>
+                    <div className="sticky left-0 h-full flex items-center text-xs font-medium px-2 whitespace-nowrap"
+                      style={{ color: C.textSub }}>{m.label}</div>
+                  </div>
+                );
+              })}
             </div>
             <div className="relative border-b" style={{ height: 22, borderColor: C.border }}>
-              {weekMarks.map(w => (
-                <div key={w.key} className="absolute top-0 h-full flex items-center text-[10px] px-1.5 border-l"
-                  style={{ left: w.offset, borderColor: "#F8F4EC", color: C.textMuted }}>{w.label}</div>
-              ))}
+              {weekMarks.map((w, i) => {
+                const ww = (weekMarks[i + 1]?.offset ?? totalWidth) - w.offset;
+                return (
+                  <div key={w.key} className="absolute top-0 h-full border-l overflow-hidden"
+                    style={{ left: w.offset, width: ww, borderColor: "#F8F4EC" }}>
+                    <div className="sticky left-0 h-full flex items-center text-[10px] px-1.5"
+                      style={{ color: C.textMuted }}>{w.label}</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       </div>
       {/* 본문: 세로 스크롤(내용이 많을 때만), 가로 스크롤은 위 헤더와 동기화 */}
-      <div className="flex" style={{ maxHeight: maxBodyHeight, overflowY: "auto" }}>
+      <div className="flex gantt-scroll" style={{ maxHeight: maxBodyHeight, overflowY: "auto" }}>
         <div className="flex-shrink-0 border-r" style={{ width: leftWidth, borderColor: C.border }}>
           {rows.map(r => (
             <div key={r.id} onClick={r.onClick} title={r.label}
@@ -642,7 +724,7 @@ function GanttChart({ rows, emptyMessage, leftWidth = 200, pxPerDay = 10, maxBod
             </div>
           ))}
         </div>
-        <div ref={bodyScrollRef} onScroll={onBodyScroll} className="overflow-x-auto flex-1">
+        <div ref={bodyScrollRef} onScroll={onBodyScroll} className="overflow-x-auto flex-1 min-h-0 gantt-scroll">
           <div style={{ width: totalWidth, position: "relative" }}>
             {todayOffset != null && (
               <div className="absolute border-l border-dashed z-10" style={{ left: todayOffset, top: 0, bottom: 0, borderColor: C.accent }} />
@@ -995,7 +1077,7 @@ function ProductCard({ product, isAdmin, isExpanded, onToggle, onUpdate, onUpdat
     setLt(""); setLu(""); setAddingLink(false);
   };
   const rmLink = (id) => onUpdate({ ...product, links: product.links.filter(l => l.id !== id) });
-  const updateLinkTitle = (id, title) => onUpdate({ ...product, links: product.links.map(l => l.id === id ? { ...l, title } : l) });
+  const updateLink = (id, patch) => onUpdate({ ...product, links: product.links.map(l => l.id === id ? { ...l, ...patch } : l) });
 
   const pipeline = product.pipeline || [];
   const done = pipeline.filter(s => s.stepStatus === "done").length;
@@ -1085,20 +1167,8 @@ function ProductCard({ product, isAdmin, isExpanded, onToggle, onUpdate, onUpdat
             <h4 className="text-sm font-semibold mb-2" style={{ color: C.textSub }}>링크</h4>
             <div className="space-y-2">
               {(product.links || []).map(l => (
-                <div key={l.id} className="flex items-center gap-2">
-                  <div className="flex-1 flex items-center gap-3 rounded-xl p-3.5 border hover:shadow-sm transition"
-                    style={{ background: C.card, borderColor: C.border }}>
-                    <a href={l.url} target="_blank" rel="noopener noreferrer" title="새 탭에서 열기" className="flex-shrink-0">
-                      <ExternalLink size={13} style={{ color: C.accent }} />
-                    </a>
-                    <InlineText value={l.title} isAdmin={isAdmin} placeholder="링크 제목"
-                      onSave={v => updateLinkTitle(l.id, v)} textClass="text-sm flex-1" />
-                    <a href={l.url} target="_blank" rel="noopener noreferrer" title="새 탭에서 열기" className="flex-shrink-0">
-                      <ChevronRight size={12} style={{ color: C.border }} />
-                    </a>
-                  </div>
-                  {isAdmin && <button onClick={() => rmLink(l.id)} style={{ color: C.textMuted }}><X size={14} /></button>}
-                </div>
+                <ProductLinkRow key={l.id} link={l} isAdmin={isAdmin}
+                  onUpdate={patch => updateLink(l.id, patch)} onRemove={() => rmLink(l.id)} />
               ))}
             </div>
             {isAdmin && (
@@ -1156,12 +1226,16 @@ function ProductCard({ product, isAdmin, isExpanded, onToggle, onUpdate, onUpdat
 function BrandView({ brand, products, isAdmin, initialExpandId, onAdd, onUpdate, onUpdatePipeline, onDelete, staff, vendors }) {
   const [typeF, setTypeF] = useState("all");
   const [statusF, setStatusF] = useState("all");
+  const [mfgF, setMfgF] = useState("all");
   const [expandedIds, setExpandedIds] = useState(() => initialExpandId ? new Set([initialExpandId]) : new Set());
   const toggle = (id) => setExpandedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
+  const manufacturers = [...new Set(products.map(p => p.manufacturer).filter(Boolean))].sort();
+
   const filtered = products.filter(p =>
     (typeF === "all" || p.type === typeF) &&
-    (statusF === "all" || p.status === statusF)
+    (statusF === "all" || p.status === statusF) &&
+    (mfgF === "all" || p.manufacturer === mfgF)
   );
   const filterBtn = (active, label, onClick) => (
     <button onClick={onClick}
@@ -1187,12 +1261,25 @@ function BrandView({ brand, products, isAdmin, initialExpandId, onAdd, onUpdate,
           </button>
         )}
       </div>
-      <div className="flex flex-wrap gap-2 mb-5">
+      <div className="flex flex-wrap items-center gap-2 mb-5">
         {[["all", "전체"], ["new", "신제품"], ["existing", "기존제품"]].map(([v, l]) =>
           filterBtn(typeF === v, l, () => setTypeF(v))
         )}
         <div style={{ width: 1, background: C.border, margin: "0 4px" }} />
         {statusFilters.map(([v, l]) => filterBtn(statusF === v, l, () => setStatusF(v)))}
+        {manufacturers.length > 0 && (
+          <>
+            <div style={{ width: 1, background: C.border, margin: "0 4px" }} />
+            <select value={mfgF} onChange={e => setMfgF(e.target.value)}
+              className="text-xs font-medium rounded-lg px-2.5 py-1.5 outline-none"
+              style={mfgF === "all"
+                ? { background: C.card, color: C.textSub, border: `1px solid ${C.border}` }
+                : { background: C.accent, color: "#fff", border: `1px solid ${C.accent}` }}>
+              <option value="all">생산 업체: 전체</option>
+              {manufacturers.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </>
+        )}
       </div>
       <div className="space-y-3">
         {filtered.length === 0 && (
@@ -1233,7 +1320,7 @@ function AddProductModal({ brandLine, pipelineTemplates, onSave, onClose }) {
         </div>
         <div className="p-6 space-y-4">
           <div>
-            <label className="text-xs block mb-1" style={{ color: C.textMuted }}>브랜드 라인</label>
+            <label className="text-xs block mb-1" style={{ color: C.textMuted }}>카테고리</label>
             <select value={brand} onChange={e => setBrand(e.target.value)}
               className="w-full text-sm border rounded-xl px-3 py-2" style={{ borderColor: C.border }}>
               {BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
@@ -1271,16 +1358,23 @@ function PipelineEditor({ brand, template, onChange, onBack }) {
   const [newName, setNewName] = useState("");
   const [editIdx, setEditIdx] = useState(null);
   const [editName, setEditName] = useState("");
+  const [dragIdx, setDragIdx] = useState(null);
+  const [overIdx, setOverIdx] = useState(null);
 
   const commit = (next) => { setSteps(next); onChange(next); };
-  const move = (idx, dir) => {
-    const nx = [...steps]; const to = idx + dir;
-    if (to < 0 || to >= nx.length) return;
-    [nx[idx], nx[to]] = [nx[to], nx[idx]]; commit(nx);
-  };
   const del = (idx) => { if (!window.confirm("삭제할까요?")) return; commit(steps.filter((_, i) => i !== idx)); };
   const add = () => { if (!newName.trim()) return; commit([...steps, { id: uid(), name: newName.trim(), internalAssignee: "", externalVendor: "" }]); setNewName(""); setAdding(false); };
   const saveEdit = (idx) => { commit(steps.map((s, i) => i === idx ? { ...s, name: editName } : s)); setEditIdx(null); };
+  const reorder = (fromIdx, toIdx) => {
+    const next = [...steps];
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    commit(next);
+  };
+  const handleDrop = (idx) => {
+    if (dragIdx !== null && dragIdx !== idx) reorder(dragIdx, idx);
+    setDragIdx(null); setOverIdx(null);
+  };
 
   return (
     <div className="p-8 max-w-2xl">
@@ -1291,8 +1385,22 @@ function PipelineEditor({ brand, template, onChange, onBack }) {
       <p className="text-sm mb-6" style={{ color: C.textMuted }}>{brand}</p>
       <div className="space-y-2 mb-4">
         {steps.map((step, idx) => (
-          <div key={step.id} className="rounded-xl border flex items-center gap-3 px-4 py-3"
-            style={{ background: C.card, borderColor: C.border }}>
+          <div key={step.id}
+            onDragOver={e => { e.preventDefault(); if (overIdx !== idx) setOverIdx(idx); }}
+            onDrop={e => { e.preventDefault(); handleDrop(idx); }}
+            className="rounded-xl border flex items-center gap-3 px-4 py-3 transition"
+            style={{
+              background: C.card, borderColor: C.border,
+              boxShadow: overIdx === idx && dragIdx !== null && dragIdx !== idx ? `0 0 0 2px ${C.accent}` : undefined,
+              opacity: dragIdx === idx ? 0.4 : 1,
+            }}>
+            <span draggable
+              onDragStart={() => setDragIdx(idx)}
+              onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
+              className="cursor-grab active:cursor-grabbing flex items-center justify-center flex-shrink-0"
+              style={{ color: C.textMuted }} title="드래그해서 순서 변경">
+              <GripVertical size={14} />
+            </span>
             <span className="text-xs w-5 text-center font-mono" style={{ color: C.textMuted }}>{idx + 1}</span>
             {editIdx === idx ? (
               <input autoFocus value={editName}
@@ -1307,10 +1415,6 @@ function PipelineEditor({ brand, template, onChange, onBack }) {
             <div className="flex items-center gap-0.5">
               <button onClick={() => { setEditIdx(idx); setEditName(step.name); }}
                 className="p-1.5 rounded hover:bg-stone-100" style={{ color: C.textMuted }}><Edit2 size={12} /></button>
-              <button onClick={() => move(idx, -1)} disabled={idx === 0}
-                className="p-1.5 rounded hover:bg-stone-100 disabled:opacity-30" style={{ color: C.textMuted }}><ArrowUp size={12} /></button>
-              <button onClick={() => move(idx, 1)} disabled={idx === steps.length - 1}
-                className="p-1.5 rounded hover:bg-stone-100 disabled:opacity-30" style={{ color: C.textMuted }}><ArrowDown size={12} /></button>
               <button onClick={() => del(idx)}
                 className="p-1.5 rounded hover:bg-red-50 hover:text-red-500" style={{ color: C.textMuted }}><Trash2 size={12} /></button>
             </div>

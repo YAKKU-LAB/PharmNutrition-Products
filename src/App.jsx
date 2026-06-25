@@ -26,7 +26,7 @@ const PW_VIEWER = "1";
 const PW_ADMIN  = "gywndldnjs";
 
 // ─── BRAND LINES ────────────────────────────────────────────────────────────
-const BRANDS = ["건강기능식품", "일반의약품", "화장품"];
+const DEFAULT_CATEGORIES = ["건강기능식품", "일반의약품", "화장품"];
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -461,12 +461,12 @@ function ProductLinkRow({ link, isAdmin, onUpdate, onRemove }) {
 }
 
 // ─── AUTH ────────────────────────────────────────────────────────────────────
-function AuthScreen({ onAuth }) {
+function AuthScreen({ onAuth, passwords }) {
   const [pw, setPw] = useState("");
   const [err, setErr] = useState("");
   const go = () => {
-    if (pw === PW_ADMIN)  { onAuth("admin");  return; }
-    if (pw === PW_VIEWER) { onAuth("viewer"); return; }
+    if (pw === passwords.admin)  { onAuth("admin");  return; }
+    if (pw === passwords.viewer) { onAuth("viewer"); return; }
     setErr("비밀번호가 맞지 않아요."); setTimeout(() => setErr(""), 2000);
   };
   return (
@@ -493,7 +493,7 @@ function AuthScreen({ onAuth }) {
 }
 
 // ─── SIDEBAR (접기/펴기 지원) ─────────────────────────────────────────────────
-function Sidebar({ view, onNav, isAdmin, onLogout }) {
+function Sidebar({ view, onNav, isAdmin, onLogout, categories }) {
   const [open, setOpen] = useState(true);
 
   if (!open) {
@@ -517,7 +517,7 @@ function Sidebar({ view, onNav, isAdmin, onLogout }) {
         </button>
         {iconBtn({ type: "dashboard" }, BarChart2, "대시보드")}
         <div className="w-6 my-2 border-t" style={{ borderColor: C.border }} />
-        {BRANDS.map(b => iconBtn({ type: "brand", brand: b }, Package, b))}
+        {categories.map(b => iconBtn({ type: "brand", brand: b }, Package, b))}
         {isAdmin && (
           <>
             <div className="w-6 my-2 border-t" style={{ borderColor: C.border }} />
@@ -562,7 +562,7 @@ function Sidebar({ view, onNav, isAdmin, onLogout }) {
       <nav className="flex-1 space-y-0.5">
         {item("대시보드", { type: "dashboard" }, BarChart2)}
         <div className="pt-3 pb-1 px-2"><p className="text-xs font-semibold" style={{ color: C.textMuted }}>카테고리</p></div>
-        {BRANDS.map(b => item(b, { type: "brand", brand: b }, Package))}
+        {categories.map(b => item(b, { type: "brand", brand: b }, Package))}
         {isAdmin && (
           <>
             <div className="pt-3 pb-1 px-2"><p className="text-xs font-semibold" style={{ color: C.textMuted }}>관리자</p></div>
@@ -690,10 +690,10 @@ function GanttChart({ rows, emptyMessage, leftWidth = 200, pxPerDay = 10, maxBod
               {monthMarks.map((m, i) => {
                 const w = (monthMarks[i + 1]?.offset ?? totalWidth) - m.offset;
                 return (
-                  <div key={m.key} className="absolute top-0 h-full border-l overflow-hidden"
+                  <div key={m.key} className="absolute top-0 h-full border-l"
                     style={{ left: m.offset, width: w, borderColor: "#F5F1EA" }}>
                     <div className="sticky left-0 h-full flex items-center text-xs font-medium px-2 whitespace-nowrap"
-                      style={{ color: C.textSub }}>{m.label}</div>
+                      style={{ color: C.textSub, background: C.card }}>{m.label}</div>
                   </div>
                 );
               })}
@@ -702,10 +702,10 @@ function GanttChart({ rows, emptyMessage, leftWidth = 200, pxPerDay = 10, maxBod
               {weekMarks.map((w, i) => {
                 const ww = (weekMarks[i + 1]?.offset ?? totalWidth) - w.offset;
                 return (
-                  <div key={w.key} className="absolute top-0 h-full border-l overflow-hidden"
+                  <div key={w.key} className="absolute top-0 h-full border-l"
                     style={{ left: w.offset, width: ww, borderColor: "#F8F4EC" }}>
                     <div className="sticky left-0 h-full flex items-center text-[10px] px-1.5"
-                      style={{ color: C.textMuted }}>{w.label}</div>
+                      style={{ color: C.textMuted, background: C.card }}>{w.label}</div>
                   </div>
                 );
               })}
@@ -782,9 +782,9 @@ function DashboardTimeline({ products, onNav }) {
 }
 
 // ─── 대시보드 ────────────────────────────────────────────────────────────────
-function Dashboard({ products, salesSheets, onNav }) {
+function Dashboard({ products, salesSheets, onNav, categories }) {
   const [tab, setTab] = useState("list");
-  const stats = BRANDS.map(b => {
+  const stats = categories.map(b => {
     const bp = products.filter(p => p.brandLine === b);
     const next = bp.filter(p => p.targetLaunchDate && p.status !== "launched")
       .sort((a, x) => new Date(a.targetLaunchDate) - new Date(x.targetLaunchDate))[0];
@@ -1297,9 +1297,9 @@ function BrandView({ brand, products, isAdmin, initialExpandId, onAdd, onUpdate,
 }
 
 // ─── 제품 추가 모달 ───────────────────────────────────────────────────────────
-function AddProductModal({ brandLine, pipelineTemplates, onSave, onClose }) {
+function AddProductModal({ brandLine, pipelineTemplates, categories, onSave, onClose }) {
   const [name, setName] = useState("");
-  const [brand, setBrand] = useState(brandLine || BRANDS[0]);
+  const [brand, setBrand] = useState(brandLine || categories[0]);
   const [type, setType] = useState("new");
   const save = () => {
     if (!name.trim()) { alert("제품명을 입력해주세요."); return; }
@@ -1323,7 +1323,7 @@ function AddProductModal({ brandLine, pipelineTemplates, onSave, onClose }) {
             <label className="text-xs block mb-1" style={{ color: C.textMuted }}>카테고리</label>
             <select value={brand} onChange={e => setBrand(e.target.value)}
               className="w-full text-sm border rounded-xl px-3 py-2" style={{ borderColor: C.border }}>
-              {BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
+              {categories.map(b => <option key={b} value={b}>{b}</option>)}
             </select>
           </div>
           <div>
@@ -1482,7 +1482,26 @@ function MasterItem({ name, memo, onUpdateName, onUpdateMemo, onRemove }) {
 }
 
 // ─── 설정 ────────────────────────────────────────────────────────────────────
-function SettingsView({ products, templates, vendors, setVendors, staff, setStaff, salesSheets, setSalesSheets, onEditPipeline }) {
+function SettingsView({ products, templates, vendors, setVendors, staff, setStaff, salesSheets, setSalesSheets,
+  categories, onAddCategory, onRenameCategory, passwords, setPasswords, onEditPipeline }) {
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const submitNewCategory = () => {
+    const name = newCategoryName.trim();
+    if (!name || categories.includes(name)) { setNewCategoryName(""); return; }
+    onAddCategory(name);
+    setNewCategoryName(""); setAddingCategory(false);
+  };
+
+  const [pwViewer, setPwViewer] = useState(passwords.viewer);
+  const [pwAdmin, setPwAdmin] = useState(passwords.admin);
+  const savePasswords = () => {
+    const v = pwViewer.trim() || passwords.viewer;
+    const a = pwAdmin.trim() || passwords.admin;
+    setPasswords({ viewer: v, admin: a });
+    setPwViewer(v); setPwAdmin(a);
+  };
+
   const [addingVendor, setAddingVendor] = useState(false);
   const [nv, setNv] = useState({ role: "", name: "" });
   const addVendor = () => { if (!nv.role || !nv.name) return; setVendors(p => [...p, { ...nv, id: uid(), memo: "" }]); setNv({ role: "", name: "" }); setAddingVendor(false); };
@@ -1527,6 +1546,27 @@ function SettingsView({ products, templates, vendors, setVendors, staff, setStaf
       </div>
 
       <div className="rounded-2xl border p-6 mb-5" style={{ background: C.card, borderColor: C.border }}>
+        <h3 className="text-sm font-semibold mb-4" style={{ color: C.textSub }}>비밀번호 변경</h3>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="text-xs block mb-1" style={{ color: C.textMuted }}>뷰어 비밀번호</label>
+            <input value={pwViewer} onChange={e => setPwViewer(e.target.value)}
+              className="w-full text-sm border rounded-xl px-3 py-2" style={{ borderColor: C.border }} />
+          </div>
+          <div>
+            <label className="text-xs block mb-1" style={{ color: C.textMuted }}>관리자 비밀번호</label>
+            <input value={pwAdmin} onChange={e => setPwAdmin(e.target.value)}
+              className="w-full text-sm border rounded-xl px-3 py-2" style={{ borderColor: C.border }} />
+          </div>
+        </div>
+        <p className="text-xs mb-3" style={{ color: C.textMuted }}>한글 비밀번호는 일부 기기에서 인식이 안 될 수 있어요. 영문/숫자 조합을 추천해요.</p>
+        <button onClick={savePasswords}
+          className="text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background: C.accent }}>
+          저장
+        </button>
+      </div>
+
+      <div className="rounded-2xl border p-6 mb-5" style={{ background: C.card, borderColor: C.border }}>
         <h3 className="text-sm font-semibold mb-4" style={{ color: C.textSub }}>발주/재고 Google Sheets</h3>
         <p className="text-xs mb-4" style={{ color: C.textMuted }}>여기에 등록한 시트가 대시보드 상단에 배너로 표시돼요. (최대 2개)</p>
         <div className="space-y-3">
@@ -1554,9 +1594,37 @@ function SettingsView({ products, templates, vendors, setVendors, staff, setStaf
       </div>
 
       <div className="rounded-2xl border p-6 mb-5" style={{ background: C.card, borderColor: C.border }}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold" style={{ color: C.textSub }}>카테고리 관리</h3>
+          <button onClick={() => setAddingCategory(true)} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg text-white" style={{ background: C.accent }}>
+            <Plus size={11} /> 추가
+          </button>
+        </div>
+        <p className="text-xs mb-3" style={{ color: C.textMuted }}>이름을 클릭하면 바로 수정돼요. 기존 제품·파이프라인 템플릿도 새 이름으로 함께 업데이트됩니다.</p>
+        <div className="space-y-1.5">
+          {categories.map(cat => (
+            <div key={cat} className="rounded-lg px-3 py-2.5" style={{ background: "#F9F6F1" }}>
+              <InlineText value={cat} isAdmin={true} textClass="text-sm font-semibold"
+                onSave={v => { const t = v.trim(); if (t && t !== cat) onRenameCategory(cat, t); }} />
+            </div>
+          ))}
+        </div>
+        {addingCategory ? (
+          <div className="flex gap-2 mt-3">
+            <input autoFocus value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && submitNewCategory()}
+              placeholder="카테고리 이름" className="flex-1 text-sm border rounded-xl px-3 py-2" style={{ borderColor: C.border }} />
+            <button onClick={submitNewCategory} className="text-white px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: C.accent }}>추가</button>
+            <button onClick={() => { setAddingCategory(false); setNewCategoryName(""); }}
+              className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: C.border, color: C.textSub }}>취소</button>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="rounded-2xl border p-6 mb-5" style={{ background: C.card, borderColor: C.border }}>
         <h3 className="text-sm font-semibold mb-4" style={{ color: C.textSub }}>파이프라인 템플릿</h3>
         <div className="space-y-2">
-          {BRANDS.map(b => (
+          {categories.map(b => (
             <button key={b} onClick={() => onEditPipeline(b)}
               className="w-full flex items-center justify-between px-4 py-3 rounded-xl border hover:bg-stone-50 transition text-left"
               style={{ borderColor: C.border }}>
@@ -1651,6 +1719,8 @@ export default function App() {
   const [vendors, setVendors] = useState(INIT_VENDORS);
   const [staff, setStaff] = useState(INIT_STAFF);
   const [salesSheets, setSalesSheets] = useState([{ id: "s1", title: "발주/재고 마스터", url: "" }]);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [passwords, setPasswords] = useState({ viewer: PW_VIEWER, admin: PW_ADMIN });
   const [showAdd, setShowAdd] = useState(false);
 
   // ── 영구 저장소: 최초 1회 불러오기 ─────────────────────────────────────────
@@ -1666,6 +1736,8 @@ export default function App() {
     if (data.vendors) setVendors(data.vendors);
     if (data.staff) setStaff(data.staff);
     if (data.salesSheets) setSalesSheets(data.salesSheets);
+    if (data.categories) setCategories(data.categories);
+    if (data.passwords) setPasswords(data.passwords);
   };
 
   useEffect(() => {
@@ -1714,7 +1786,7 @@ export default function App() {
         const { error } = await supabase
           .from(STATE_TABLE)
           .update({
-            data: { products, templates, vendors, staff, salesSheets },
+            data: { products, templates, vendors, staff, salesSheets, categories, passwords },
             updated_at: new Date().toISOString(),
           })
           .eq("id", STATE_ROW_ID);
@@ -1727,7 +1799,7 @@ export default function App() {
       }
     }, 600);
     return () => clearTimeout(saveTimer.current);
-  }, [products, templates, vendors, staff, salesSheets, loaded]);
+  }, [products, templates, vendors, staff, salesSheets, categories, passwords, loaded]);
 
   if (!loaded) {
     return (
@@ -1738,7 +1810,7 @@ export default function App() {
     );
   }
 
-  if (auth === "locked") return <AuthScreen onAuth={setAuth} />;
+  if (auth === "locked") return <AuthScreen onAuth={setAuth} passwords={passwords} />;
 
   const isAdmin = auth === "admin";
   const nav = (v) => setView(v);
@@ -1749,9 +1821,25 @@ export default function App() {
   const updatePipeline = (id, pipeline) =>
     setProducts(prev => prev.map(p => p.id === id ? { ...p, pipeline } : p));
 
+  const addCategory = (name) => {
+    setCategories(prev => [...prev, name]);
+    setTemplates(prev => ({ ...prev, [name]: [] }));
+  };
+  const renameCategory = (oldName, newName) => {
+    setCategories(prev => prev.map(c => c === oldName ? newName : c));
+    setTemplates(prev => {
+      const next = { ...prev };
+      next[newName] = next[oldName] ?? [];
+      if (newName !== oldName) delete next[oldName];
+      return next;
+    });
+    setProducts(prev => prev.map(p => p.brandLine === oldName ? { ...p, brandLine: newName } : p));
+    setView(v => v.brand === oldName ? { ...v, brand: newName } : v);
+  };
+
   const renderMain = () => {
     switch (view.type) {
-      case "dashboard": return <Dashboard products={products} salesSheets={salesSheets} onNav={nav} />;
+      case "dashboard": return <Dashboard products={products} salesSheets={salesSheets} onNav={nav} categories={categories} />;
       case "brand": return (
         <BrandView key={`${view.brand}-${view.expandId || ""}`}
           brand={view.brand} products={products.filter(p => p.brandLine === view.brand)}
@@ -1771,6 +1859,8 @@ export default function App() {
           vendors={vendors} setVendors={setVendors}
           staff={staff} setStaff={setStaff}
           salesSheets={salesSheets} setSalesSheets={setSalesSheets}
+          categories={categories} onAddCategory={addCategory} onRenameCategory={renameCategory}
+          passwords={passwords} setPasswords={setPasswords}
           onEditPipeline={brand => nav({ type: "pipeline-editor", brand })} />
       );
       default: return null;
@@ -1779,10 +1869,10 @@ export default function App() {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: C.bg, fontFamily: "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif" }}>
-      <Sidebar view={view} onNav={nav} isAdmin={isAdmin} onLogout={() => setAuth("locked")} />
+      <Sidebar view={view} onNav={nav} isAdmin={isAdmin} onLogout={() => setAuth("locked")} categories={categories} />
       <main className="flex-1 overflow-y-auto">{renderMain()}</main>
       {showAdd && (
-        <AddProductModal brandLine={view.brand} pipelineTemplates={templates}
+        <AddProductModal brandLine={view.brand} pipelineTemplates={templates} categories={categories}
           onSave={addProduct} onClose={() => setShowAdd(false)} />
       )}
       {isAdmin && <SaveStatus status={saveStatus} />}

@@ -716,7 +716,7 @@ function GanttChart({ rows, emptyMessage, leftWidth = 200, pxPerDay = 10, maxBod
       {/* 본문: 세로 스크롤(내용이 많을 때만), 가로 스크롤은 위 헤더와 동기화 */}
       <div className="flex gantt-scroll" style={{ maxHeight: maxBodyHeight, overflowY: "auto" }}>
         <div className="flex-shrink-0 border-r" style={{ width: leftWidth, borderColor: C.border }}>
-          {rows.map(r => (
+          {dated.map(r => (
             <div key={r.id} onClick={r.onClick} title={r.label}
               className={`flex items-center px-3 text-xs border-b truncate ${r.onClick ? "cursor-pointer hover:bg-stone-50" : ""}`}
               style={{ height: ROW_H, borderColor: "#F5F1EA", color: C.text }}>
@@ -729,7 +729,7 @@ function GanttChart({ rows, emptyMessage, leftWidth = 200, pxPerDay = 10, maxBod
             {todayOffset != null && (
               <div className="absolute border-l border-dashed z-10" style={{ left: todayOffset, top: 0, bottom: 0, borderColor: C.accent }} />
             )}
-            {rows.map(r => {
+            {dated.map(r => {
               const s = r.start ? dayDiff(minDate, r.start) * pxPerDay : null;
               const e = r.end ? dayDiff(minDate, r.end) * pxPerDay : null;
               return (
